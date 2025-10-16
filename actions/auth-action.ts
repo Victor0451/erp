@@ -6,7 +6,6 @@ import { loginSchema, registerSchema } from "@/lib/zod"; // Asegúrate de que re
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { z } from "zod";
-import { Account } from "@prisma/client";
 import { nanoid } from "nanoid";
 
 export const loginAction = async (values: z.infer<typeof loginSchema>) => {
@@ -49,7 +48,7 @@ export const registerAction = async (
     if (user) {
       // Verificar si tiene cuentas OAuth vinculadas
       const oauthAccounts = user.Account.filter(
-        (Account: Account) => Account.type === "oauth"
+        (Account) => Account.type === "oauth"
       );
       if (oauthAccounts.length > 0) {
         return {
