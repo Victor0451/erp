@@ -1,0 +1,145 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["cari", "public"]
+}
+
+model categorias {
+  idcategoria Int     @id @default(autoincrement())
+  categoria   String? @db.VarChar(255)
+  descripcion String? @db.VarChar(1000)
+
+  @@schema("cari")
+}
+
+model compras {
+  idcompra    Int       @id @default(autoincrement())
+  fecha       DateTime? @db.Date
+  idproducto  Int?
+  cantidad    Int?
+  importe     Float?
+  idproveedor Int?
+  moneda      String?   @db.VarChar(50)
+  nro_factura String?   @db.VarChar
+  observacion String?   @db.VarChar(500)
+
+  @@schema("cari")
+}
+
+model productos {
+  idproducto      Int       @id @default(autoincrement())
+  producto        String?   @db.VarChar(255)
+  alta            DateTime? @db.Date
+  unidad          String?   @db.VarChar(10)
+  stock           Int?
+  observacion     String?   @db.VarChar(1000)
+  precio_unitario Float?
+  estado          Boolean?
+  idcategoria     Int?
+
+  @@schema("cari")
+}
+
+model usuarios {
+  usuario    String  @db.VarChar(255)
+  contrasena String  @db.VarChar(255)
+  apellido   String  @db.VarChar(255)
+  nombre     String  @db.VarChar(255)
+  estado     Boolean
+  idusuario  Int     @id @default(autoincrement())
+
+  @@schema("cari")
+}
+
+model vehiculos {
+  idvehiculo  Int      @id @default(autoincrement())
+  vehiculo    String?  @db.VarChar(255)
+  patente     String?  @db.VarChar(255)
+  modelo      Int?
+  observacion String?  @db.VarChar(1000)
+  estado      Boolean?
+
+  @@schema("cari")
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime
+  User              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@schema("public")
+}
+
+model User {
+  id            String    @id
+  name          String?
+  email         String    @unique
+  password      String?
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(user)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime
+  Account       Account[]
+
+  @@schema("public")
+}
+
+model VerificationToken {
+  identifier String   @id @unique
+  token      String
+  expires    DateTime
+
+  @@schema("public")
+}
+
+model proveedores {
+  idproveedor      Int      @id @default(autoincrement())
+  proveedor        String?  @db.VarChar(255)
+  clave_tributaria String?  @db.VarChar(20)
+  tipo_clave       String?  @db.VarChar(20)
+  domicilio        String?  @db.VarChar(500)
+  observacion      String?  @db.VarChar(500)
+  estado           Boolean?
+  telefono         Int?
+
+  @@schema("cari")
+}
+
+model ventas {
+  idventa     Int       @id(map: "compras_copy1_pkey") @default(autoincrement())
+  fecha       DateTime? @db.Date
+  idproducto  Int?
+  cantidad    Int?
+  importe     Float?
+  idproveedor Int?
+  moneda      String?   @db.VarChar(50)
+  nro_factura String?   @db.VarChar
+  observacion String?   @db.VarChar(500)
+
+  @@schema("cari")
+}
+
+enum Role {
+  user
+  admin
+
+  @@schema("public")
+}
