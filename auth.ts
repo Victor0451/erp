@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-
+import { type User } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import authConfig from "@/auth.config";
@@ -12,18 +12,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     // jwt() se ejecuta cada vez que se crea o actualiza un token JWT.
     // Aquí es donde puedes agregar información adicional al token.
-    jwt({ token, user }) {
-      if (user) {
-        token.role = user.role;
-      }
+    async jwt({ token }) {
+      if (!token.sub) return token;
+
+      const existingUser = await db.user.findUnique({
+        where: { id: token.sub },
+      });
+
+      if (!existingUser) return token;
+
+      token.role = existingUser.role;
+      token.tenantID = existingUser.tenantID;
+      token.tenantName = existingUser.tenantName;
+
       return token;
     },
     // session() se utiliza para agregar la información del token a la sesión del usuario,
     // lo que hace que esté disponible en el cliente.
     session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role;
-      }
+      session.user.id = token.sub as string;
+      session.user.role = token.role as string;
+      session.user.tenantID = token.tenantID as number | null;
+      session.user.tenantName = token.tenantName as string | null;
       return session;
     },
   },

@@ -1,61 +1,87 @@
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import moment from "moment";
 
 export async function GET(req: NextRequest) {
-  let f = req.nextUrl.searchParams.get("f");
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-  if (f === "traer vehiculos") {
-    let data = await db.$queryRawUnsafe(`SELECT * FROM cari.vehiculos`);
-    await db.$disconnect();
+  const schema = session.user.tenantName;
+  const f = req.nextUrl.searchParams.get("f");
 
-    return NextResponse.json(data);
+  try {
+    if (f === "traer vehiculos") {
+      const data = await db.$queryRaw(
+        Prisma.sql`SELECT * FROM ${Prisma.raw(schema)}.vehiculos`
+      );
+      return NextResponse.json(data);
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en GET /api/vehiculos:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  console.log(body);
-  if (body.f === "reg vehiculo") {
-    const user = await db.$queryRawUnsafe(
-      `
-        INSERT INTO cari.vehiculos
-        (
-          vehiculo,
-          patente,
-          modelo,
-          observacion,
-          estado
-        )
-        VALUES
-        (  
-          '${body.vehiculo}',          
-          '${body.patente}',
-          ${parseInt(body.modelo)},          
-          '${body.observacion}',          
-          true
-        )
-    `
-    );
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-    await db.$disconnect();
+  const schema = session.user.tenantName;
 
-    return NextResponse.json(user);
+  try {
+    const body = await req.json();
+
+    if (body.f === "reg vehiculo") {
+      const result = await db.$executeRaw(Prisma.sql`
+          INSERT INTO ${Prisma.raw(schema)}.vehiculos
+          (vehiculo, patente, modelo, observacion, estado)
+          VALUES
+          (${body.vehiculo}, ${body.patente}, ${parseInt(body.modelo, 10)}, ${body.observacion}, true)
+        `);
+
+      return NextResponse.json({ success: true, affectedRows: result });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en POST /api/vehiculos:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  let f = req.nextUrl.searchParams.get("f");
-  let id = req.nextUrl.searchParams.get("id");
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-  if (f === "eliminar vehiculo") {
-    let data = await db.$queryRawUnsafe(
-      `DELETE FROM cari.vehiculos WHERE idvehiculo = ${id}`
-    );
+  const schema = session.user.tenantName;
+  const f = req.nextUrl.searchParams.get("f");
+  const id = req.nextUrl.searchParams.get("id");
 
-    await db.$disconnect();
+  try {
+    if (f === "eliminar vehiculo") {
+      if (!id) {
+        return NextResponse.json({ error: "ID no proporcionado" }, { status: 400 });
+      }
 
-    return NextResponse.json(data);
+      const result = await db.$executeRaw(
+        Prisma.sql`DELETE FROM ${Prisma.raw(schema)}.vehiculos WHERE idvehiculo = ${parseInt(id, 10)}`
+      );
+
+      return NextResponse.json({ success: true, affectedRows: result });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en DELETE /api/vehiculos:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }

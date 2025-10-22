@@ -22,6 +22,9 @@ const HomePage = () => {
               <Button asChild size="lg">
                 <Link href="/dashboard">Ir al Dashboard</Link>
               </Button>
+               <Button asChild variant="outline" size="lg">
+                <Link href="/login">Loguearse</Link>
+              </Button>
               <Button asChild variant="outline" size="lg">
                 <Link href="/register">Registrarse</Link>
               </Button>
@@ -80,6 +83,8 @@ const HomePage = () => {
             </div>
           </div>
         </div>
+
+        
       </section>
     </main>
   );

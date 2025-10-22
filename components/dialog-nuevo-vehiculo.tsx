@@ -152,7 +152,11 @@ export function DialgoNuevoVehiculo({ traerDatos }: MyComponentProps) {
                       <FormItem>
                         <FormLabel>Modelo</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

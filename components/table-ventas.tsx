@@ -80,9 +80,9 @@ export function TablaVentas({
   const [prov, saveProv] = useState<any[]>([]);
 
   const traerProductos = async (idcategoria?: number) => {
-    let url = `/api/productos?f=traer%20productos%20compra`;
+    let url = `/api/productos?f=traer%20productos`;
     if (idcategoria && idcategoria > 0) {
-      url = `/api/productos?f=traer%20productos%20categoria%20compra&id=${idcategoria}`;
+      url = `/api/productos?f=traer%20productos%20categoria&id=${idcategoria}`;
     }
     const getRows = await fetch(url);
     const rawText = await getRows.text();
@@ -266,7 +266,7 @@ export function TablaVentas({
       const catData = await catResponse.json();
       saveCategorias(catData);
 
-      const provResponse = await fetch(`/api/proveedores?f=traer%20proveedores`);
+      const provResponse = await fetch(`/api/clientes?f=traer%20clientes`);
       const provData = await provResponse.json();
       saveProv(provData);
     };

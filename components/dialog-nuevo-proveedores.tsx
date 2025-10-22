@@ -47,9 +47,9 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
     defaultValues: {
       proveedor: "",
       clave_tributaria: "",
-      tipo_clave: "",
+      tipo_clave: undefined,
       domicilio: "",
-      telefono: 0,
+      telefono: BigInt(0),
       observacion: "",
     },
   });
@@ -71,7 +71,10 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(postData),
+        body: JSON.stringify({
+          ...postData,
+          telefono: postData.telefono.toString(),
+        }),
       });
 
       if (response.status === 200) {
@@ -144,10 +147,10 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
                     name="clave_tributaria"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Clave Tributaria</FormLabel>
+                        <FormLabel>Clave Tributaria (CUIT/CUIL)</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Clave Tributaria"
+                            placeholder="N° CUIT/CUIL"
                             type="text"
                             {...field}
                           />
@@ -164,11 +167,11 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
                     name="tipo_clave"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>CUIT/CUIL</FormLabel>
+                        <FormLabel>¿CUIT o CUIL?</FormLabel>
                         <FormControl>
                           <Select
                             onValueChange={(value) => field.onChange(value)}
-                            value={field.value.toString()}
+                            value={field.value || ""}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="CUIT/CUIL" />
@@ -193,7 +196,11 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
                       <FormItem>
                         <FormLabel>Telefono</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...field} 
+                            value={field.value?.toString() ?? ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

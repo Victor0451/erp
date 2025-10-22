@@ -107,7 +107,7 @@ export function DialgoNuevaVenta({
       idproducto: idPordRef.current?.value,
       cantidad: cantidadRef.current?.value,
       importe: impTotal,
-      idproveedor: provSel,
+      idcliente: provSel,
       moneda: monedaSel,
       nro_factura: nroFacturaRef.current?.value,
       observacion: observacionRef.current?.value,
@@ -116,14 +116,14 @@ export function DialgoNuevaVenta({
 
     if (postData.moneda === "") {
       setError(
-        "Debes seleccionar el tipo de divisa con la que se efectua la compra"
+        "Debes seleccionar el tipo de divisa con la que se efectua la venta"
       );
     } else if (postData.fecha === "") {
-      setError("Debes seleccionar la fecha de la compra");
+      setError("Debes seleccionar la fecha de la venta");
     } else if (postData.cantidad === "") {
-      setError("Debes ingresar la cantidad de unidades de esta compra");
-    } else if (postData.idproveedor === "") {
-      setError("Debes seleccionar el proveedor al cual se realizo la compra");
+      setError("Debes ingresar la cantidad de unidades de esta venta");
+    } else if (postData.idcliente === "") {
+      setError("Debes seleccionar el cliente al cual se realizo la venta");
     } else if (postData.nro_factura === "") {
       setError(
         "Debes ingresar el numero de factura de la compra, en caso de no tener ingresa 0"
@@ -228,15 +228,15 @@ export function DialgoNuevaVenta({
               </div>
 
               <div className="w-full md:w-1/5 px-3 mt-6 mb-6 md:mb-0">
-                <Label>Proveedor</Label>
+                <Label>Clientes</Label>
                 <Select onValueChange={saveprovSel}>
                   <SelectTrigger className="mt-1" ref={proveedorRef}>
-                    <SelectValue placeholder="Proveedores" />
+                    <SelectValue placeholder="Clientes" />
                   </SelectTrigger>
                   <SelectContent>
                     {prov.map((p: any, index: any) => (
-                      <SelectItem key={index} value={p.idproveedor.toString()}>
-                        {p.proveedor.toString()}
+                      <SelectItem key={index} value={p.idcliente.toString()}>
+                        {p.cliente.toString()}
                       </SelectItem>
                     ))}
                   </SelectContent>

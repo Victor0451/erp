@@ -97,6 +97,9 @@ model User {
   role          Role      @default(user)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime
+  tenantName    String?   @db.VarChar(255)
+  tenantID      Int?
+  estado        Boolean?
   Account       Account[]
 
   @@schema("public")
@@ -124,17 +127,47 @@ model proveedores {
 }
 
 model ventas {
-  idventa     Int       @id(map: "compras_copy1_pkey") @default(autoincrement())
+  idventa     Int       @id(map: "ventas_copy1_pkey") @default(autoincrement())
   fecha       DateTime? @db.Date
   idproducto  Int?
   cantidad    Int?
   importe     Float?
-  idproveedor Int?
+  idcliente   Int?
   moneda      String?   @db.VarChar(50)
   nro_factura String?   @db.VarChar
   observacion String?   @db.VarChar(500)
 
   @@schema("cari")
+}
+
+model clientes {
+  idcliente Int      @id @default(autoincrement())
+  cliente   String?  @db.VarChar(255)
+  dni       Int?
+  calle     String?  @db.VarChar(255)
+  numero    Int?
+  barrio    String?  @db.VarChar(255)
+  telefono  Int?
+  mail      String?  @db.VarChar(255)
+  estado    Boolean?
+  nombre    String?  @db.VarChar(255)
+
+  @@schema("cari")
+}
+
+model Tenant {
+  tenantID     Int      @id(map: "empresa_pkey")
+  tenantName   String?  @db.VarChar(255)
+  razon_social String?  @db.VarChar(255)
+  cuit_cuil    String?  @db.VarChar(255)
+  direccion    String?  @db.VarChar(255)
+  telefono     Int?
+  email        String?  @db.VarChar(255)
+  ubicacion    String?  @db.VarChar(255)
+  estado       Boolean?
+  empresa      String?  @db.VarChar(255)
+
+  @@schema("public")
 }
 
 enum Role {

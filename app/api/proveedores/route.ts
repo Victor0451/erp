@@ -1,64 +1,87 @@
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import moment from "moment";
 
 export async function GET(req: NextRequest) {
-  let f = req.nextUrl.searchParams.get("f");
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-  if (f === "traer proveedores") {
-    let data = await db.$queryRawUnsafe(`SELECT * FROM cari.proveedores`);
+  const schema = session.user.tenantName;
+  const f = req.nextUrl.searchParams.get("f");
 
-    await db.$disconnect();
+  try {
+    if (f === "traer proveedores") {
+      const data = await db.$queryRaw(
+        Prisma.sql`SELECT * FROM ${Prisma.raw(schema)}.proveedores`
+      );
+      return NextResponse.json(data);
+    }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en GET /api/proveedores:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  
-  if (body.f === "reg proveedor") {
-    const user = await db.$queryRawUnsafe(
-      `
-        INSERT INTO cari.proveedores
-        (
-          proveedor,
-          clave_tributaria,
-          tipo_clave,
-          domicilio,
-          observacion,
-          estado
-        )
-        VALUES
-        (  
-          '${body.proveedor}',          
-          '${body.clave_tributaria}',
-          '${body.tipo_clave}',
-          '${body.domicilio}',          
-          '${body.observacion}',          
-          true
-        )
-    `
-    );
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-    await db.$disconnect();
+  const schema = session.user.tenantName;
 
-    return NextResponse.json(user);
+  try {
+    const body = await req.json();
+
+    if (body.f === "reg proveedor") {
+      const result = await db.$executeRaw(Prisma.sql`
+          INSERT INTO ${Prisma.raw(schema)}.proveedores
+          (proveedor, clave_tributaria, tipo_clave, domicilio, observacion, estado, telefono)
+          VALUES
+          (${body.proveedor}, ${body.clave_tributaria}, ${body.tipo_clave}, ${body.domicilio}, ${body.observacion}, true, ${parseInt(body.telefono, 10)})
+        `);
+
+      return NextResponse.json({ success: true, affectedRows: result });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en POST /api/proveedores:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
-  let f = req.nextUrl.searchParams.get("f");
-  let id = req.nextUrl.searchParams.get("id");
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-  if (f === "eliminar proveedor") {
-    let data = await db.$queryRawUnsafe(
-      `DELETE FROM cari.proveedores WHERE idproveedor = ${id}`
-    );
+  const schema = session.user.tenantName;
+  const f = req.nextUrl.searchParams.get("f");
+  const id = req.nextUrl.searchParams.get("id");
 
-    await db.$disconnect();
+  try {
+    if (f === "eliminar proveedor") {
+      if (!id) {
+        return NextResponse.json({ error: "ID no proporcionado" }, { status: 400 });
+      }
 
-    return NextResponse.json(data);
+      const result = await db.$executeRaw(
+        Prisma.sql`DELETE FROM ${Prisma.raw(schema)}.proveedores WHERE idproveedor = ${parseInt(id, 10)}`
+      );
+
+      return NextResponse.json({ success: true, affectedRows: result });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en DELETE /api/proveedores:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }

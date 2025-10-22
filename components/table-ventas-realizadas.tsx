@@ -210,10 +210,10 @@ export function TablaVentasRealizadas({
       ),
     },
     {
-      accessorKey: "proveedor",
-      header: "Proveedor",
+      accessorKey: "cliente",
+      header: "Cliente",
       cell: ({ row }) => (
-        <div className="capitalize">{row.getValue("proveedor")}</div>
+        <div className="capitalize">{row.getValue("cliente")}</div>
       ),
     },
     {

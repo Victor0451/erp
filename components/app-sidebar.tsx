@@ -89,6 +89,10 @@ const data = {
           title: "Proveedores",
           url: "/dashboard/proveedores",
         },
+        {
+          title: "Clientes",
+          url: "/dashboard/clientes",
+        },
       ],
     },
   ],
@@ -122,7 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

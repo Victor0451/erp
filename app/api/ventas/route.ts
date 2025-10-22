@@ -1,120 +1,143 @@
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import moment from "moment";
 
 export async function GET(req: NextRequest) {
-  let f = req.nextUrl.searchParams.get("f");
-
-  if (f === "traer ventas") {
-    let data = await db.$queryRawUnsafe(
-      `
-        SELECT
-          c.idproducto,
-          c.idventa,
-          P.producto,
-          C.moneda,
-          C.cantidad,
-          C.importe,
-          C.fecha,
-          C.observacion,
-          C.nro_factura,
-          R.proveedor 
-        FROM cari.ventas AS C 
-        INNER JOIN cari.productos AS P ON P.idproducto = C.idproducto
-        INNER JOIN cari.proveedores AS R ON R.idproveedor = C.idproveedor
-
-
-
-      `
-    );
-    await db.$disconnect();
-
-    return NextResponse.json(data);
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-  if (f === "traer productos venta") {
-    let data = await db.$queryRawUnsafe(
-      `SELECT * FROM cari.productos WHERE estado = true`
-    );
-    await db.$disconnect();
 
-    return NextResponse.json(data);
-  } else if (f === "traer productos categoria") {
-    let id = req.nextUrl.searchParams.get("id");
+  const schema = session.user.tenantName;
+  const f = req.nextUrl.searchParams.get("f");
 
-    let data = await db.$queryRawUnsafe(
-      `SELECT * FROM cari.productos WHERE idcategoria = ${id}`
-    );
-    await db.$disconnect();
-    return NextResponse.json(data);
-  } else if (f === "traer productos categoria venta") {
-    let id = req.nextUrl.searchParams.get("id");
+  try {
+    if (f === "traer ventas") {
+      // NOTA: La consulta original unía 'ventas' con 'proveedores'. Esto podría ser un error.
+      // Si las ventas son a clientes, deberías unir con una tabla de 'clientes'.
+      // Por ahora, se replica la lógica original de forma segura.
+      const data = await db.$queryRaw(Prisma.sql`
+          SELECT
+            c.idproducto, c.idventa, P.producto, C.moneda, C.cantidad,
+            C.importe, C.fecha, C.observacion, C.nro_factura, R.cliente 
+          FROM ${Prisma.raw(schema)}.ventas AS C 
+          INNER JOIN ${Prisma.raw(schema)}.productos AS P ON P.idproducto = C.idproducto
+          INNER JOIN ${Prisma.raw(schema)}.clientes AS R ON R.idcliente = C.idcliente
+        `);
+      return NextResponse.json(data);
+    }
 
-    let data = await db.$queryRawUnsafe(
-      `SELECT * FROM cari.productos WHERE idcategoria = ${id} AND estado = true`
-    );
-    await db.$disconnect();
-    return NextResponse.json(data);
+    if (f === "traer productos venta") {
+      const data = await db.$queryRaw(
+        Prisma.sql`SELECT * FROM ${Prisma.raw(schema)}.productos WHERE estado = true`
+      );
+      return NextResponse.json(data);
+    }
+
+    if (f === "traer productos categoria") {
+      const id = req.nextUrl.searchParams.get("id");
+      if (!id) return NextResponse.json({ error: "ID de categoría no proporcionado" }, { status: 400 });
+
+      const data = await db.$queryRaw(
+        Prisma.sql`SELECT * FROM ${Prisma.raw(schema)}.productos WHERE idcategoria = ${parseInt(id, 10)}`
+      );
+      return NextResponse.json(data);
+    }
+
+    if (f === "traer productos categoria venta") {
+      const id = req.nextUrl.searchParams.get("id");
+      if (!id) return NextResponse.json({ error: "ID de categoría no proporcionado" }, { status: 400 });
+
+      const data = await db.$queryRaw(
+        Prisma.sql`SELECT * FROM ${Prisma.raw(schema)}.productos WHERE idcategoria = ${parseInt(id, 10)} AND estado = true`
+      );
+      return NextResponse.json(data);
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en GET /api/ventas:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-  if (body.f === "reg venta") {
-    const user = await db.$queryRawUnsafe(
-      `
-        INSERT INTO cari.ventas
-        (
-            fecha,
-            idproducto,
-            cantidad,
-            importe,
-            idproveedor,
-            moneda,
-            nro_factura,
-            observacion
-         
-        )
-        VALUES
-        ( 
-          '${moment(body.fecha).format("YYYY-MM-DD")}', 
-          ${parseInt(body.idproducto)},          
-          ${parseInt(body.cantidad)},
-          ${parseFloat(body.importe)},
-          ${parseInt(body.idproveedor)},
-          '${body.moneda}',
-          '${body.nro_factura}',
-          '${body.observacion}'      
-       
-        )
-    `
-    );
+  const schema = session.user.tenantName;
 
-    await db.$disconnect();
+  try {
+    const body = await req.json();
 
-    return NextResponse.json(user);
+    if (body.f === "reg venta") {
+      const fecha = new Date(body.fecha);
+      const idproducto = parseInt(body.idproducto, 10);
+      const cantidad = parseInt(body.cantidad, 10);
+      const importe = parseFloat(body.importe);
+      const idcliente = parseInt(body.idcliente, 10); // Asumiendo que esto debería ser idcliente
+
+      const result = await db.$executeRaw(Prisma.sql`
+          INSERT INTO ${Prisma.raw(schema)}.ventas
+          (fecha, idproducto, cantidad, importe, idcliente, moneda, nro_factura, observacion)
+          VALUES
+          (${fecha}, ${idproducto}, ${cantidad}, ${importe}, ${idcliente}, ${body.moneda}, ${body.nro_factura}, ${body.observacion})
+        `);
+
+      return NextResponse.json({ success: true, affectedRows: result });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en POST /api/ventas:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
   const body = await req.json();
 
   if (body.f === "flag") {
+    // Lógica para PUT aquí
   }
+
+  return NextResponse.json({ message: "Método no implementado" }, { status: 404 });
 }
 
 export async function DELETE(req: NextRequest) {
-  let f = req.nextUrl.searchParams.get("f");
-  let id = req.nextUrl.searchParams.get("id");
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
-  if (f === "eliminar venta") {
-    let data = await db.$queryRawUnsafe(
-      `DELETE FROM cari.ventas WHERE idventa = ${id}`
-    );
+  const schema = session.user.tenantName;
+  const f = req.nextUrl.searchParams.get("f");
+  const id = req.nextUrl.searchParams.get("id");
 
-    await db.$disconnect();
+  try {
+    if (f === "eliminar venta") {
+      if (!id) {
+        return NextResponse.json({ error: "ID no proporcionado" }, { status: 400 });
+      }
 
-    return NextResponse.json(data);
+      const result = await db.$executeRaw(
+        Prisma.sql`DELETE FROM ${Prisma.raw(schema)}.ventas WHERE idventa = ${parseInt(id, 10)}`
+      );
+
+      return NextResponse.json({ success: true, affectedRows: result });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en DELETE /api/ventas:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }

@@ -47,11 +47,11 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
     defaultValues: {
       producto: "",
       alta: new Date(),
-      unidad: "",
-      stock: 0,
-      idcategoria: 0,
+      unidad: undefined,
+      stock: undefined,
+      idcategoria: undefined,
       observacion: "",
-      precio_unitario: 0,
+      precio_unitario: undefined,
     },
   });
 
@@ -147,7 +147,7 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
                         <FormControl>
                           <Select
                             onValueChange={(value) => field.onChange(value)}
-                            value={field.value.toString()}
+                            value={field.value ? field.value.toString() : ""}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Categoria" />
@@ -180,7 +180,7 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
                         <FormControl>
                           <Select
                             onValueChange={(value) => field.onChange(value)}
-                            value={field.value.toString()}
+                            value={field.value || ""}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Moneda" />
@@ -249,7 +249,11 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
                       <FormItem>
                         <FormLabel>Stock</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -264,7 +268,11 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
                       <FormItem>
                         <FormLabel>Precio Unitario</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

@@ -77,7 +77,7 @@ export function TablaCompras(
   const [prov, saveProv] = useState<any[]>([]);
 
   const traerDatos = async () => {
-    const getRows = await fetch(`/api/productos?f=traer%20productos%20compra`);
+    const getRows = await fetch(`/api/productos?f=traer%20productos`);
     const rawText = await getRows.text();
     try {
       const data = JSON.parse(rawText);
@@ -260,7 +260,7 @@ export function TablaCompras(
 
   async function onSubmit(values: z.infer<typeof FormSchema>) {
     const getRows2 = await fetch(
-      `/api/productos?f=traer%20productos%20categoria%20compra&id=${values.cateSel}`
+      `/api/productos?f=traer%20productos%20categoria&id=${values.cateSel}`
     );
     const rawText2 = await getRows2.text();
     try {

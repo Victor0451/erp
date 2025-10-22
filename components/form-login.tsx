@@ -134,7 +134,16 @@ const FormLogin = ({ isVerified, OAuthAccountNotLinked }: FormLoginProps) => {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <CardFooter className="justify-center">
+          <p className="text-sm text-muted-foreground">
+            ¿No tienes cuenta?, registrate ahora mismo.{" "}
+            <a href="/register" className="text-primary hover:underline">
+              Registrarte
+            </a>
+          </p>
+        </CardFooter>
+
+        {/* <div className="space-y-2">
           <ButtonSocial provider="github">
             <FaGithub className="mr-2 h-5 w-5" />
             <span>Continuar con Github</span>
@@ -143,7 +152,7 @@ const FormLogin = ({ isVerified, OAuthAccountNotLinked }: FormLoginProps) => {
             <FaGoogle className="mr-2 h-5 w-5" />
             <span>Continuar con Google</span>
           </ButtonSocial>
-        </div>
+        </div> */}
       </CardContent>
     </Card>
   );

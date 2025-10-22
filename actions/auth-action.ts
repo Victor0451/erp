@@ -4,9 +4,9 @@ import { signIn } from "@/auth";
 import { db } from "@/lib/db";
 import { loginSchema, registerSchema } from "@/lib/zod"; // Asegúrate de que registerSchema esté importado
 import bcrypt from "bcryptjs";
+import { nanoid } from "nanoid";
 import { AuthError } from "next-auth";
 import { z } from "zod";
-import { nanoid } from "nanoid";
 
 export const loginAction = async (values: z.infer<typeof loginSchema>) => {
   try {
@@ -64,21 +64,19 @@ export const registerAction = async (
     // hash de la contraseña
     const passwordHash = await bcrypt.hash(data.password, 10);
 
-    // crear el usuario
+    // Crear el usuario y configurar el tenant en un solo paso
+    const newUserId = nanoid();
     await db.user.create({
       data: {
-        id: nanoid(), // Generar un ID único
+        id: newUserId,
         email: data.email,
         name: data.name,
         password: passwordHash,
-        updatedAt: new Date(), // Establecer la fecha de actualización
+        updatedAt: new Date(),
+        role: "admin", // Asignar rol de administrador al nuevo tenant
+        tenantID: parseInt(newUserId, 10), // Usar el nuevo ID como ID del tenant
+        tenantName: data.name, // Usar el nombre como nombre del tenant
       },
-    });
-
-    await signIn("credentials", {
-      email: data.email,
-      password: data.password,
-      redirect: false,
     });
 
     return { success: true };
