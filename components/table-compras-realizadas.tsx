@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,11 +37,13 @@ import {
 
 import { showToast } from "nextjs-toast-notify";
 import moment from "moment";
+import { exportToExcel } from "@/lib/export-to-excel";
+import { DialogEditarCompra } from "./dialog-editar-compra";
 
 export function TablaComprasRealizadas(
-  { onCompraEliminada, refresh }: 
-  { onCompraEliminada: () => void; refresh?: boolean }
-  ) {
+  { onCompraEliminada, refresh }:
+    { onCompraEliminada: () => void; refresh?: boolean }
+) {
   type Compra = {
     fecha: Date;
     idcompra: number;
@@ -54,6 +56,13 @@ export function TablaComprasRealizadas(
   };
 
   const [data, saveData] = useState<any[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [compraToEdit, setCompraToEdit] = useState<Compra | null>(null);
+
+  const handleEdit = (compra: Compra) => {
+    setCompraToEdit(compra);
+    setIsDialogOpen(true);
+  };
 
   const traerDatos = async () => {
     const getRows = await fetch(`/api/compras?f=traer%20compras`);
@@ -267,6 +276,9 @@ export function TablaComprasRealizadas(
               <DropdownMenuItem onClick={() => eliminarDatos(compra)}>
                 Eliminar
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(compra)}>
+                Editar
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -305,6 +317,29 @@ export function TablaComprasRealizadas(
       rowSelection,
     },
   });
+
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id,
+        formatter: (value: any) => {
+          if (col.id === 'fecha') {
+            return moment(value).format('DD/MM/YYYY');
+          }
+          return value;
+        }
+      }));
+
+    exportToExcel({
+      filename: 'compras_realizadas',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
 
   return (
     <div className="w-full">
@@ -346,6 +381,18 @@ export function TablaComprasRealizadas(
               })}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Button variant="outline" onClick={handleExportToExcel} className="ml-auto">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <DialogEditarCompra
+          traerDatos={traerDatos}
+          compraToEdit={compraToEdit}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -358,9 +405,9 @@ export function TablaComprasRealizadas(
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}
@@ -421,6 +468,6 @@ export function TablaComprasRealizadas(
           </Button>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

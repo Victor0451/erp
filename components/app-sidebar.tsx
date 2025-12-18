@@ -65,6 +65,14 @@ const data = {
           title: "Ventas",
           url: "/dashboard/ventas",
         },
+        {
+          title: "Facturacion",
+          url: "/dashboard/facturacion",
+        },
+        {
+          title: "Haberes",
+          url: "/dashboard/haberes",
+        },
       ],
     },
 

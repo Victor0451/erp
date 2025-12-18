@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,6 +27,9 @@ import { showToast } from "nextjs-toast-notify";
 
 interface MyComponentProps {
   traerDatos: () => void;
+  clienteToEdit?: any;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const clienteSchema = z.object({
@@ -38,7 +42,7 @@ const clienteSchema = z.object({
   mail: z.string().email({ message: "Email inválido." }),
 });
 
-export function DialogoNuevoCliente({ traerDatos }: MyComponentProps) {
+export function DialogoNuevoCliente({ traerDatos, clienteToEdit, open, onOpenChange }: MyComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -54,6 +58,30 @@ export function DialogoNuevoCliente({ traerDatos }: MyComponentProps) {
       mail: "",
     },
   });
+
+  useEffect(() => {
+    if (clienteToEdit) {
+      form.reset({
+        cliente: clienteToEdit.cliente,
+        dni: Number(clienteToEdit.dni),
+        calle: clienteToEdit.calle || "",
+        numero: Number(clienteToEdit.numero),
+        barrio: clienteToEdit.barrio || "",
+        telefono: Number(clienteToEdit.telefono),
+        mail: clienteToEdit.mail || "",
+      });
+    } else {
+      form.reset({
+        cliente: "",
+        dni: 0,
+        calle: "",
+        numero: 0,
+        barrio: "",
+        telefono: 0,
+        mail: "",
+      });
+    }
+  }, [clienteToEdit, form]);
 
   const regDatos = async (values: z.infer<typeof clienteSchema>) => {
     const postData = {
@@ -79,7 +107,7 @@ export function DialogoNuevoCliente({ traerDatos }: MyComponentProps) {
         });
         traerDatos();
         form.reset();
-        // Consider closing the dialog here
+        if (onOpenChange) onOpenChange(false);
       } else {
         const errorData = await response.json();
         setError(errorData.error || "Ocurrió un error al registrar el cliente");
@@ -96,23 +124,71 @@ export function DialogoNuevoCliente({ traerDatos }: MyComponentProps) {
     }
   };
 
+  const actDatos = async (values: z.infer<typeof clienteSchema>) => {
+    const postData = {
+      ...values,
+      idcliente: clienteToEdit.idcliente,
+      f: "act cliente",
+    };
+
+    try {
+      const response = await fetch("/api/clientes", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postData),
+      });
+
+      if (response.ok) {
+        showToast.success("Cliente Actualizado", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+        traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Ocurrió un error al actualizar el cliente");
+        showToast.error(errorData.error || "Ocurrió un error al actualizar el cliente", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting data:", error);
+      setError("Error de conexión al actualizar el cliente.");
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof clienteSchema>) {
     setError(null);
     startTransition(() => {
-      regDatos(values);
+      if (clienteToEdit) {
+        actDatos(values);
+      } else {
+        regDatos(values);
+      }
     });
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Nuevo Cliente</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!onOpenChange && (
+        <DialogTrigger asChild>
+          <Button variant="outline">Nuevo Cliente</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[1200px]">
         <DialogHeader>
-          <DialogTitle>Nuevo Cliente</DialogTitle>
+          <DialogTitle>{clienteToEdit ? "Editar Cliente" : "Nuevo Cliente"}</DialogTitle>
           <DialogDescription>
-            Ingresa los datos del nuevo cliente.
+            {clienteToEdit ? "Modifica los datos del cliente." : "Ingresa los datos del nuevo cliente."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -228,7 +304,7 @@ export function DialogoNuevoCliente({ traerDatos }: MyComponentProps) {
                 <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Registrando..." : "Registrar"}
+                {isPending ? "Procesando..." : (clienteToEdit ? "Actualizar" : "Registrar")}
               </Button>
             </DialogFooter>
           </form>

@@ -65,7 +65,7 @@ export async function PUT(req: NextRequest) {
         razon_social,
         cuit_cuil,
         direccion,
-        telefono: parseInt(telefono, 10), // Convertir la cadena de texto a número
+        telefono, // Now a String field
         email,
         ubicacion,
       },

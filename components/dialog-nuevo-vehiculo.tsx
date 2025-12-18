@@ -28,9 +28,12 @@ import { showToast } from "nextjs-toast-notify";
 
 interface MyComponentProps {
   traerDatos: () => void;
+  vehiculoToEdit?: any;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DialgoNuevoVehiculo({ traerDatos }: MyComponentProps) {
+export function DialgoNuevoVehiculo({ traerDatos, vehiculoToEdit, open, onOpenChange }: MyComponentProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [isPending, startTransition] = useTransition();
@@ -45,6 +48,24 @@ export function DialgoNuevoVehiculo({ traerDatos }: MyComponentProps) {
     },
   });
 
+  useEffect(() => {
+    if (vehiculoToEdit) {
+      form.reset({
+        vehiculo: vehiculoToEdit.vehiculo,
+        patente: vehiculoToEdit.patente,
+        modelo: Number(vehiculoToEdit.modelo),
+        observacion: vehiculoToEdit.observacion,
+      });
+    } else {
+      form.reset({
+        vehiculo: "",
+        patente: "",
+        modelo: 0,
+        observacion: "",
+      });
+    }
+  }, [vehiculoToEdit, form]);
+
   const regDatos = async (values: z.infer<typeof vehiculoSchema>) => {
     const postData = {
       vehiculo: values.vehiculo,
@@ -53,7 +74,7 @@ export function DialgoNuevoVehiculo({ traerDatos }: MyComponentProps) {
       observacion: values.observacion,
       f: "reg vehiculo",
     };
-   
+
 
     try {
       const response = await fetch("/api/vehiculos", {
@@ -73,8 +94,54 @@ export function DialgoNuevoVehiculo({ traerDatos }: MyComponentProps) {
         });
 
         traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
       } else if (response.status === 500) {
         showToast.error("Ocurrio un error al registrar al vehiculo", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting data:", error);
+    }
+  };
+
+  const actDatos = async (values: z.infer<typeof vehiculoSchema>) => {
+    const postData = {
+      vehiculo: values.vehiculo,
+      patente: values.patente,
+      modelo: values.modelo,
+      observacion: values.observacion,
+      idvehiculo: vehiculoToEdit.idvehiculo,
+      f: "act vehiculo",
+    };
+
+
+    try {
+      const response = await fetch("/api/vehiculos", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postData),
+      });
+
+      if (response.status === 200) {
+        showToast.success("Vehiculo Actualizado", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+
+        traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
+      } else if (response.status === 500) {
+        showToast.error("Ocurrio un error al actualizar al vehiculo", {
           duration: 4000,
           position: "top-right",
           transition: "fadeIn",
@@ -89,20 +156,26 @@ export function DialgoNuevoVehiculo({ traerDatos }: MyComponentProps) {
   async function onSubmit(values: z.infer<typeof vehiculoSchema>) {
     setError(null);
     startTransition(async () => {
-      const response = await regDatos(values);
+      if (vehiculoToEdit) {
+        await actDatos(values);
+      } else {
+        await regDatos(values);
+      }
     });
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Nuevo Vehiculo</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!onOpenChange && (
+        <DialogTrigger asChild>
+          <Button variant="outline">Nuevo Vehiculo</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[1200px] ">
         <DialogHeader>
-          <DialogTitle>Nuevo Vehiculo</DialogTitle>
+          <DialogTitle>{vehiculoToEdit ? "Editar Vehiculo" : "Nuevo Vehiculo"}</DialogTitle>
           <DialogDescription>
-            Ingresa los datos del nuevo vehiculo.
+            {vehiculoToEdit ? "Modifica los datos del vehiculo." : "Ingresa los datos del nuevo vehiculo."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -190,7 +263,7 @@ export function DialgoNuevoVehiculo({ traerDatos }: MyComponentProps) {
                   <Button variant="outline">Cancelar</Button>
                 </DialogClose>
 
-                <Button type="submit">Registrar</Button>
+                <Button type="submit">{vehiculoToEdit ? "Actualizar" : "Registrar"}</Button>
               </DialogFooter>
             </form>
           </Form>

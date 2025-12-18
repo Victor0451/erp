@@ -35,9 +35,12 @@ import {
 
 interface MyComponentProps {
   traerDatos: () => void;
+  productoToEdit?: any;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
+export function DialgoNuevaProducto({ traerDatos, productoToEdit, open, onOpenChange }: MyComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [categorias, saveCategorias] = useState<any[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -48,12 +51,39 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
       producto: "",
       alta: new Date(),
       unidad: undefined,
-      stock: undefined,
+      moneda: undefined,
+      stock: 0,
       idcategoria: undefined,
       observacion: "",
-      precio_unitario: undefined,
+      precio_unitario: 0,
     },
   });
+
+  useEffect(() => {
+    if (productoToEdit) {
+      form.reset({
+        producto: productoToEdit.producto,
+        alta: new Date(productoToEdit.alta),
+        unidad: productoToEdit.unidad,
+        moneda: productoToEdit.moneda,
+        stock: Number(productoToEdit.stock),
+        idcategoria: Number(productoToEdit.idcategoria),
+        observacion: productoToEdit.observacion || "",
+        precio_unitario: Number(productoToEdit.precio_unitario),
+      });
+    } else {
+      form.reset({
+        producto: "",
+        alta: new Date(),
+        unidad: undefined,
+        moneda: undefined,
+        stock: 0,
+        idcategoria: undefined,
+        observacion: "",
+        precio_unitario: 0,
+      });
+    }
+  }, [productoToEdit, form]);
 
   const traerCategorias = async () => {
     const getRows = await fetch(`/api/categorias?f=traer%20categorias`);
@@ -72,6 +102,7 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
       producto: values.producto,
       alta: values.alta,
       unidad: values.unidad,
+      moneda: values.moneda,
       stock: values.stock,
       idcategoria: values.idcategoria,
       observacion: values.observacion,
@@ -97,8 +128,57 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
         });
 
         traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
       } else if (response.status === 500) {
         showToast.error("Ocurrio un error al registrar la producto", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting data:", error);
+    }
+  };
+
+  const actDatos = async (values: z.infer<typeof productoSchema>) => {
+    const postData = {
+      producto: values.producto,
+      alta: values.alta,
+      unidad: values.unidad,
+      moneda: values.moneda,
+      stock: values.stock,
+      idcategoria: values.idcategoria,
+      observacion: values.observacion,
+      precio_unitario: values.precio_unitario,
+      idproducto: productoToEdit.idproducto,
+      f: "act producto",
+    };
+
+    try {
+      const response = await fetch("/api/productos", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postData),
+      });
+
+      if (response.status === 200) {
+        showToast.success("Producto Actualizado", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+
+        traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
+      } else if (response.status === 500) {
+        showToast.error("Ocurrio un error al actualizar la producto", {
           duration: 4000,
           position: "top-right",
           transition: "fadeIn",
@@ -113,7 +193,11 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
   async function onSubmit(values: z.infer<typeof productoSchema>) {
     setError(null);
     startTransition(async () => {
-      const response = await regDatos(values);
+      if (productoToEdit) {
+        await actDatos(values);
+      } else {
+        await regDatos(values);
+      }
     });
   }
 
@@ -122,15 +206,17 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
   }, []);
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Nuevo Producto</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!onOpenChange && (
+        <DialogTrigger asChild>
+          <Button variant="outline">Nuevo Producto</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[1200px] ">
         <DialogHeader>
-          <DialogTitle>Nuevo Producto</DialogTitle>
+          <DialogTitle>{productoToEdit ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
           <DialogDescription>
-            Ingresa los datos del nuevo producto.
+            {productoToEdit ? "Modifica los datos del producto." : "Ingresa los datos del nuevo producto."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -146,8 +232,10 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
                         <FormLabel>Categoria</FormLabel>
                         <FormControl>
                           <Select
-                            onValueChange={(value) => field.onChange(value)}
+                            key={`categoria-${field.value || 'new'}`}
+                            onValueChange={(value) => field.onChange(Number(value))}
                             value={field.value ? field.value.toString() : ""}
+                            defaultValue={field.value ? field.value.toString() : ""}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Categoria" />
@@ -173,14 +261,16 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
                 <div className="w-full md:w-1/5 px-3 mt-6 mb-6 md:mb-0">
                   <FormField
                     control={form.control}
-                    name="unidad"
+                    name="moneda"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Moneda</FormLabel>
                         <FormControl>
                           <Select
+                            key={`moneda-${field.value || 'new'}`}
                             onValueChange={(value) => field.onChange(value)}
                             value={field.value || ""}
+                            defaultValue={field.value || ""}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Moneda" />
@@ -188,6 +278,38 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
                             <SelectContent>
                               <SelectItem value="Pesos">Pesos</SelectItem>
                               <SelectItem value="Dolares">Dolares</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="w-full md:w-1/5 px-3 mt-6 mb-6 md:mb-0">
+                  <FormField
+                    control={form.control}
+                    name="unidad"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unidad</FormLabel>
+                        <FormControl>
+                          <Select
+                            key={`unidad-${field.value || 'new'}`}
+                            onValueChange={(value) => field.onChange(value)}
+                            value={field.value || ""}
+                            defaultValue={field.value || ""}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Unidad de medida" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="kg">Kilogramos (kg)</SelectItem>
+                              <SelectItem value="lts">Litros (lts)</SelectItem>
+                              <SelectItem value="unidades">Unidades</SelectItem>
+                              <SelectItem value="cajas">Cajas</SelectItem>
+                              <SelectItem value="metros">Metros (m)</SelectItem>
+                              <SelectItem value="paquetes">Paquetes</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -305,7 +427,7 @@ export function DialgoNuevaProducto({ traerDatos }: MyComponentProps) {
                   <Button variant="outline">Cancelar</Button>
                 </DialogClose>
 
-                <Button type="submit">Registrar</Button>
+                <Button type="submit">{productoToEdit ? "Actualizar" : "Registrar"}</Button>
               </DialogFooter>
             </form>
           </Form>

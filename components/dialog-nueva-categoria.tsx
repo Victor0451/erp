@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useTransition, useState } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { categoriaSchema } from "../lib/zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,9 +28,12 @@ import { showToast } from "nextjs-toast-notify";
 
 interface MyComponentProps {
   traerDatos: () => void;
+  categoriaToEdit?: any;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DialgoNuevaCategoria({ traerDatos }: MyComponentProps) {
+export function DialgoNuevaCategoria({ traerDatos, categoriaToEdit, open, onOpenChange }: MyComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -41,6 +44,20 @@ export function DialgoNuevaCategoria({ traerDatos }: MyComponentProps) {
       descripcion: "",
     },
   });
+
+  useEffect(() => {
+    if (categoriaToEdit) {
+      form.reset({
+        categoria: categoriaToEdit.categoria,
+        descripcion: categoriaToEdit.descripcion,
+      });
+    } else {
+      form.reset({
+        categoria: "",
+        descripcion: "",
+      });
+    }
+  }, [categoriaToEdit, form]);
 
   const regCategoria = async (values: z.infer<typeof categoriaSchema>) => {
     const postData = {
@@ -67,8 +84,51 @@ export function DialgoNuevaCategoria({ traerDatos }: MyComponentProps) {
         });
 
         traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
       } else if (response.status === 500) {
         showToast.error("Ocurrio un error al registrar la categoria", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting data:", error);
+    }
+  };
+
+  const actCategoria = async (values: z.infer<typeof categoriaSchema>) => {
+    const postData = {
+      categoria: values.categoria,
+      descripcion: values.descripcion,
+      idcategoria: categoriaToEdit.idcategoria,
+      f: "act categoria",
+    };
+
+    try {
+      const response = await fetch("/api/categorias", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postData),
+      });
+
+      if (response.status === 200) {
+        showToast.success("Categoria Actualizada", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+
+        traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
+      } else if (response.status === 500) {
+        showToast.error("Ocurrio un error al actualizar la categoria", {
           duration: 4000,
           position: "top-right",
           transition: "fadeIn",
@@ -83,20 +143,26 @@ export function DialgoNuevaCategoria({ traerDatos }: MyComponentProps) {
   async function onSubmit(values: z.infer<typeof categoriaSchema>) {
     setError(null);
     startTransition(async () => {
-      const response = await regCategoria(values);
+      if (categoriaToEdit) {
+        await actCategoria(values);
+      } else {
+        await regCategoria(values);
+      }
     });
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Nueva Categoria</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!onOpenChange && (
+        <DialogTrigger asChild>
+          <Button variant="outline">Nueva Categoria</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
-          <DialogTitle>Nueva Categoria</DialogTitle>
+          <DialogTitle>{categoriaToEdit ? "Editar Categoria" : "Nueva Categoria"}</DialogTitle>
           <DialogDescription>
-            Ingresa los datos de la nueva categoria.
+            {categoriaToEdit ? "Modifica los datos de la categoria." : "Ingresa los datos de la nueva categoria."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -142,7 +208,7 @@ export function DialgoNuevaCategoria({ traerDatos }: MyComponentProps) {
                   <Button variant="outline">Cancelar</Button>
                 </DialogClose>
 
-                <Button type="submit">Registrar</Button>
+                <Button type="submit">{categoriaToEdit ? "Actualizar" : "Registrar"}</Button>
               </DialogFooter>
             </form>
           </Form>

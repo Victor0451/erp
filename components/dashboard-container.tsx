@@ -4,6 +4,7 @@ import { Overview } from "@/components/overview";
 import { StockAlerts } from "@/components/stock-alerts";
 import { RecentSales } from "@/components/recent-sales";
 import { StatCard } from "@/components/stat-card";
+import { BillingSummary } from "@/components/billing-summary";
 import {
   Card,
   CardContent,
@@ -16,13 +17,14 @@ import { db } from "@/lib/db";
 import { CreditCard, DollarSign, ShoppingCart } from "lucide-react";
 import { set } from "zod";
 
-export interface IAppProps {}
+export interface IAppProps { }
 
 export function DashboardContainer(props: IAppProps) {
   const [estadistica, setEstadistica] = useState<any>(null);
   const [ventasRecientes, setVentasRecientes] = useState<any>(null);
   const [ventasPorMes, setVentasPorMes] = useState<any[] | null>(null);
   const [alertasStock, setAlertasStock] = useState<any[] | null>(null);
+  const [resumenFacturacion, setResumenFacturacion] = useState<any[] | null>(null);
 
   const traerEstadistica = async () => {
     const getRows = await fetch(`/api/informes?f=est%20ventas%20y%20compras`);
@@ -69,11 +71,23 @@ export function DashboardContainer(props: IAppProps) {
     }
   };
 
+  const traerResumenFacturacion = async () => {
+    const getRows = await fetch(`/api/informes?f=resumen%20facturacion`);
+    const rawText = await getRows.text();
+    try {
+      const data = JSON.parse(rawText);
+      setResumenFacturacion(data);
+    } catch (error) {
+      console.error("Error parsing JSON for billing summary:", error, rawText);
+    }
+  };
+
   const traerData = () => {
     traerEstadistica();
     traerUltimasVentas();
     traerVentasPorMes();
     traerAlertasStock();
+    traerResumenFacturacion();
   };
   useEffect(() => {
     traerData();
@@ -128,6 +142,9 @@ export function DashboardContainer(props: IAppProps) {
               </CardContent>
             </Card>
             <StockAlerts stockAlerts={alertasStock} />
+          </div>
+          <div className="grid gap-4 md:grid-cols-1 mt-6">
+            <BillingSummary data={resumenFacturacion} />
           </div>
         </>
       ) : !estadistica ? (

@@ -35,9 +35,12 @@ import { showToast } from "nextjs-toast-notify";
 
 interface MyComponentProps {
   traerDatos: () => void;
+  proveedorToEdit?: any;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
+export function DialgoNuevoProveedor({ traerDatos, proveedorToEdit, open, onOpenChange }: MyComponentProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [isPending, startTransition] = useTransition();
@@ -49,10 +52,32 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
       clave_tributaria: "",
       tipo_clave: undefined,
       domicilio: "",
-      telefono: BigInt(0),
+      telefono: 0,
       observacion: "",
     },
   });
+
+  useEffect(() => {
+    if (proveedorToEdit) {
+      form.reset({
+        proveedor: proveedorToEdit.proveedor,
+        clave_tributaria: proveedorToEdit.clave_tributaria,
+        tipo_clave: proveedorToEdit.tipo_clave,
+        domicilio: proveedorToEdit.domicilio,
+        telefono: Number(proveedorToEdit.telefono),
+        observacion: proveedorToEdit.observacion || "",
+      });
+    } else {
+      form.reset({
+        proveedor: "",
+        clave_tributaria: "",
+        tipo_clave: undefined,
+        domicilio: "",
+        telefono: 0,
+        observacion: "",
+      });
+    }
+  }, [proveedorToEdit, form]);
 
   const regDatos = async (values: z.infer<typeof proveedorSchema>) => {
     const postData = {
@@ -71,10 +96,7 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...postData,
-          telefono: postData.telefono.toString(),
-        }),
+        body: JSON.stringify(postData),
       });
 
       if (response.status === 200) {
@@ -86,8 +108,55 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
         });
 
         traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
       } else if (response.status === 500) {
         showToast.error("Ocurrio un error al registrar al proveedor", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error submitting data:", error);
+    }
+  };
+
+  const actDatos = async (values: z.infer<typeof proveedorSchema>) => {
+    const postData = {
+      proveedor: values.proveedor,
+      clave_tributaria: values.clave_tributaria,
+      tipo_clave: values.tipo_clave,
+      domicilio: values.domicilio,
+      telefono: values.telefono,
+      observacion: values.observacion,
+      idproveedor: proveedorToEdit.idproveedor,
+      f: "act proveedor",
+    };
+
+    try {
+      const response = await fetch("/api/proveedores", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postData),
+      });
+
+      if (response.status === 200) {
+        showToast.success("Proveedor Actualizado", {
+          duration: 4000,
+          position: "top-right",
+          transition: "fadeIn",
+          sound: true,
+        });
+
+        traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
+      } else if (response.status === 500) {
+        showToast.error("Ocurrio un error al actualizar el proveedor", {
           duration: 4000,
           position: "top-right",
           transition: "fadeIn",
@@ -102,20 +171,26 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
   async function onSubmit(values: z.infer<typeof proveedorSchema>) {
     setError(null);
     startTransition(async () => {
-      const response = await regDatos(values);
+      if (proveedorToEdit) {
+        await actDatos(values);
+      } else {
+        await regDatos(values);
+      }
     });
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Nuevo Proveedor</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!onOpenChange && (
+        <DialogTrigger asChild>
+          <Button variant="outline">Nuevo Proveedor</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[1200px] ">
         <DialogHeader>
-          <DialogTitle>Nuevo Proveedor</DialogTitle>
+          <DialogTitle>{proveedorToEdit ? "Editar Proveedor" : "Nuevo Proveedor"}</DialogTitle>
           <DialogDescription>
-            Ingresa los datos del nuevo proveedor.
+            {proveedorToEdit ? "Modifica los datos del proveedor." : "Ingresa los datos del nuevo proveedor."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
@@ -198,7 +273,7 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
                         <FormControl>
                           <Input
                             type="number"
-                            {...field} 
+                            {...field}
                             value={field.value?.toString() ?? ""}
                           />
                         </FormControl>
@@ -254,7 +329,7 @@ export function DialgoNuevoProveedor({ traerDatos }: MyComponentProps) {
                   <Button variant="outline">Cancelar</Button>
                 </DialogClose>
 
-                <Button type="submit">Registrar</Button>
+                <Button type="submit">{proveedorToEdit ? "Actualizar" : "Registrar"}</Button>
               </DialogFooter>
             </form>
           </Form>

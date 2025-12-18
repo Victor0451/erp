@@ -32,8 +32,11 @@ export const productoSchema = z.object({
     required_error: "Ingresa la fecha de alta del producto",
     invalid_type_error: "La fecha de alta no es válida.",
   }),
-  unidad: z.enum(["Pesos", "Dolares"], {
+  moneda: z.enum(["Pesos", "Dolares"], {
     required_error: "Selecciona una moneda.",
+  }),
+  unidad: z.enum(["kg", "lts", "unidades", "cajas", "metros", "paquetes"], {
+    required_error: "Selecciona una unidad de medida.",
   }),
   stock: z.coerce.number({
     required_error: "El stock es requerido.",
@@ -70,7 +73,7 @@ export const proveedorSchema = z.object({
   tipo_clave: z.enum(["CUIT", "CUIL"], {
     required_error: "Selecciona un tipo de clave.",
   }),
-  telefono: z.coerce.bigint({
+  telefono: z.coerce.number({
     required_error: "El teléfono es requerido.",
     invalid_type_error: "El teléfono debe ser un número.",
   }).positive("El teléfono debe ser un número válido."),
@@ -101,7 +104,66 @@ export const tenantSchema = z.object({
   razon_social: z.string().min(1, "La razón social es requerida."),
   cuit_cuil: z.string().min(1, "El CUIT/CUIL es requerido."),
   direccion: z.string().min(1, "La dirección es requerida."),
-  telefono: z.coerce.bigint().positive("El teléfono debe ser un número válido."),
+  telefono: z.coerce.number().positive("El teléfono debe ser un número válido."),
   email: z.string().email("Email inválido."),
   ubicacion: z.string().min(1, "La ubicación es requerida."),
+});
+
+export const facturacionSchema = z.object({
+  fecha: z.coerce.date({
+    required_error: "La fecha es requerida.",
+    invalid_type_error: "La fecha no es válida.",
+  }),
+  idproveedor: z.coerce.number().int().positive("Proveedor inválido."),
+  nro_factura: z.string({ required_error: "El número de factura es requerido." }),
+  descripcion: z.string().optional(),
+  importe: z.coerce.number({ required_error: "El importe es requerido." })
+    .nonnegative("El importe no puede ser negativo."),
+  moneda: z.enum(["Pesos", "Dolares"], { required_error: "La moneda es requerida." }),
+});
+
+export const empleadoSchema = z.object({
+  cuil: z.string().min(1, "El CUIL es requerido."),
+  dni: z.string().min(1, "El DNI es requerido."),
+  apellido: z.string().min(1, "El apellido es requerido."),
+  nombre: z.string().min(1, "El nombre es requerido."),
+  fecha_ingreso: z.coerce.date({
+    required_error: "La fecha de ingreso es requerida.",
+    invalid_type_error: "La fecha no es válida.",
+  }),
+  idcategoria: z.coerce.number({
+    required_error: "La categoría es requerida.",
+    invalid_type_error: "La categoría debe ser un número.",
+  }).int("La categoría debe ser un número entero.").positive("La categoría debe ser un ID válido."),
+});
+
+export const haberesSchema = z.object({
+  idempleado: z.coerce.number().int().positive("Empleado inválido."),
+  fecha_pago: z.coerce.date({
+    required_error: "La fecha de pago es requerida.",
+    invalid_type_error: "La fecha no es válida.",
+  }),
+  dias_trabajo: z.coerce.number().int().nonnegative("Días de trabajo inválidos."),
+  cant_unitario: z.coerce.number().nonnegative("Cantidad unitaria inválida."),
+  haberes: z.coerce.number().nonnegative(),
+  antiguedad_porcentaje: z.coerce.number().nonnegative(),
+  antiguedad_monto: z.coerce.number().nonnegative(),
+  asig_familiar: z.coerce.number().nonnegative(),
+  no_remunerado: z.coerce.number().nonnegative(),
+  premio: z.coerce.number().nonnegative(),
+  haberes_brutos: z.coerce.number().nonnegative(),
+  jubilacion_porcentaje: z.coerce.number().nonnegative().optional(),
+  jubilacion: z.coerce.number().nonnegative(),
+  ley_19032_porcentaje: z.coerce.number().nonnegative().optional(),
+  ley_19032: z.coerce.number().nonnegative(),
+  obra_social_porcentaje: z.coerce.number().nonnegative().optional(),
+  obra_social: z.coerce.number().nonnegative(),
+  renatea_porcentaje: z.coerce.number().nonnegative().optional(),
+  renatea: z.coerce.number().nonnegative(),
+  cta_solidaria_porcentaje: z.coerce.number().nonnegative().optional(),
+  cta_solidaria: z.coerce.number().nonnegative(),
+  total_deducciones: z.coerce.number().nonnegative(),
+  haberes_neto: z.coerce.number(),
+  anticipo: z.coerce.number().nonnegative(),
+  cancelacion: z.coerce.number(),
 });

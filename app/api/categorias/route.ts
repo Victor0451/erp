@@ -15,9 +15,17 @@ export async function GET(req: NextRequest) {
   const f = req.nextUrl.searchParams.get("f");
 
   if (f === "traer categorias") {
-    // Usamos consultas parametrizadas para seguridad
+    // Tabla categorias (productos) no tiene columna estado
     const data = await db.$queryRaw(
-      Prisma.sql`SELECT * FROM ${Prisma.raw(schema)}.categorias`
+      Prisma.sql`SELECT * FROM ${Prisma.raw(schema)}.categorias ORDER BY categoria ASC`
+    );
+    return NextResponse.json(data);
+  }
+
+  if (f === "traer empleados_categorias") {
+    // Usamos consultas directas para tablas no definidas en Prisma schema
+    const data = await db.$queryRawUnsafe(
+      `SELECT * FROM ${schema}.empleados_categorias WHERE estado = true ORDER BY categoria ASC`
     );
     return NextResponse.json(data);
   }
@@ -48,6 +56,47 @@ export async function POST(req: NextRequest) {
   );
 
   return NextResponse.json({ success: true, affectedRows: result });
+}
+
+export async function PUT(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.tenantName) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const schema = session.user.tenantName;
+
+  try {
+    const body = await req.json();
+
+    if (body.f === "act categoria") {
+      const { idcategoria, categoria, descripcion } = body;
+
+      if (!idcategoria) {
+        return NextResponse.json({ error: "ID de categoría no proporcionado" }, { status: 400 });
+      }
+
+      const result = await db.$executeRaw(
+        Prisma.sql`
+          UPDATE ${Prisma.raw(schema)}.categorias
+          SET categoria = ${categoria}, 
+              descripcion = ${descripcion}
+          WHERE idcategoria = ${parseInt(idcategoria, 10)}
+        `
+      );
+
+      if (result === 0) {
+        return NextResponse.json({ error: "Categoría no encontrada" }, { status: 404 });
+      }
+
+      return NextResponse.json({ success: true, affectedRows: result });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en PUT /api/categorias:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: NextRequest) {

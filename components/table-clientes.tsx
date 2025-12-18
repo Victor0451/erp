@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { DialogoNuevoCliente } from "./dialog-nuevo-cliente";
 import { showToast } from "nextjs-toast-notify";
+import { exportToExcel } from "@/lib/export-to-excel";
 
 export type Cliente = {
   idcliente: number;
@@ -51,6 +52,18 @@ export type Cliente = {
 
 export function TablaClientes() {
   const [data, saveData] = useState([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [clienteToEdit, setClienteToEdit] = useState<Cliente | null>(null);
+
+  const handleEdit = (cliente: Cliente) => {
+    setClienteToEdit(cliente);
+    setIsDialogOpen(true);
+  };
+
+  const handleNew = () => {
+    setClienteToEdit(null);
+    setIsDialogOpen(true);
+  };
 
   const traerDatos = async () => {
     const getRows = await fetch(`/api/clientes?f=traer%20clientes`);
@@ -211,6 +224,9 @@ export function TablaClientes() {
               >
                 Eliminar
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(cliente)}>
+                Editar
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -250,6 +266,23 @@ export function TablaClientes() {
     },
   });
 
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id
+      }));
+
+    exportToExcel({
+      filename: 'clientes',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
@@ -288,7 +321,18 @@ export function TablaClientes() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DialogoNuevoCliente traerDatos={traerDatos} />
+        <Button variant="outline" onClick={handleExportToExcel} className="mr-2">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <Button onClick={handleNew}>Nuevo Cliente</Button>
+        <DialogoNuevoCliente
+          traerDatos={traerDatos}
+          clienteToEdit={clienteToEdit}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -301,9 +345,9 @@ export function TablaClientes() {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}

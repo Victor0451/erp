@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,6 +37,7 @@ import {
 import { DialgoNuevaProducto } from "./dialog-nuevo-producto";
 import { showToast } from "nextjs-toast-notify";
 import moment from "moment";
+import { exportToExcel } from "@/lib/export-to-excel";
 import {
   Select,
   SelectContent,
@@ -62,6 +63,7 @@ export function TablaProductos() {
     idproducto: number;
     producto: string;
     alta: Date;
+    moneda: string;
     unidad: string;
     stock: number;
     precio_unitario: number;
@@ -71,6 +73,18 @@ export function TablaProductos() {
 
   const [data, saveData] = useState<any[]>([]);
   const [categorias, saveCategorias] = useState<any[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [productoToEdit, setProductoToEdit] = useState<Producto | null>(null);
+
+  const handleEdit = (producto: Producto) => {
+    setProductoToEdit(producto);
+    setIsDialogOpen(true);
+  };
+
+  const handleNew = () => {
+    setProductoToEdit(null);
+    setIsDialogOpen(true);
+  };
 
   const traerDatos = async () => {
     const getRows = await fetch(`/api/productos?f=traer%20productos`);
@@ -192,8 +206,15 @@ export function TablaProductos() {
       ),
     },
     {
-      accessorKey: "unidad",
+      accessorKey: "moneda",
       header: "Moneda",
+      cell: ({ row }) => (
+        <div className="capitalize">{row.getValue("moneda")}</div>
+      ),
+    },
+    {
+      accessorKey: "unidad",
+      header: "Unidad",
       cell: ({ row }) => (
         <div className="capitalize">{row.getValue("unidad")}</div>
       ),
@@ -253,6 +274,9 @@ export function TablaProductos() {
                 onClick={() => eliminarDatos(producto.idproducto)}
               >
                 Eliminar
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(producto)}>
+                Editar
               </DropdownMenuItem>
               <DropdownMenuSeparator />
             </DropdownMenuContent>
@@ -319,6 +343,32 @@ export function TablaProductos() {
       rowSelection,
     },
   });
+
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id,
+        formatter: (value: any) => {
+          if (col.id === 'alta') {
+            return moment(value).format('DD/MM/YYYY');
+          }
+          if (col.id === 'estado') {
+            return value === true ? 'Activo' : 'De Baja';
+          }
+          return value;
+        }
+      }));
+
+    exportToExcel({
+      filename: 'productos',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
 
   return (
     <div className="w-full">
@@ -417,7 +467,18 @@ export function TablaProductos() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DialgoNuevaProducto traerDatos={traerDatos} />
+        <Button variant="outline" onClick={handleExportToExcel} className="mr-2">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <Button onClick={handleNew}>Nuevo Producto</Button>
+        <DialgoNuevaProducto
+          traerDatos={traerDatos}
+          productoToEdit={productoToEdit}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
         <Button onClick={traerDatos}>Todos los Productos</Button>
       </div>
       <div className="overflow-hidden rounded-md border">
@@ -431,9 +492,9 @@ export function TablaProductos() {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}

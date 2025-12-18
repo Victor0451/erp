@@ -18,7 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useTransition, useState } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,6 +26,9 @@ import { showToast } from "nextjs-toast-notify";
 
 interface MyComponentProps {
   traerDatos: () => void;
+  operadorToEdit?: any;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const operadorSchema = z.object({
@@ -34,18 +37,42 @@ const operadorSchema = z.object({
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
-export function DialogoNuevoOperador({ traerDatos }: MyComponentProps) {
+export function DialogoNuevoOperador({ traerDatos, operadorToEdit, open, onOpenChange }: MyComponentProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const schema = operadorToEdit
+    ? z.object({
+      name: z.string().min(1, { message: "El nombre es requerido." }),
+      email: z.string().email({ message: "Email inválido." }),
+      password: z.string().optional(),
+    })
+    : operadorSchema;
+
   const form = useForm<z.infer<typeof operadorSchema>>({
-    resolver: zodResolver(operadorSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       name: "",
       email: "",
       password: "",
     },
   });
+
+  useEffect(() => {
+    if (operadorToEdit) {
+      form.reset({
+        name: operadorToEdit.name,
+        email: operadorToEdit.email,
+        password: "",
+      });
+    } else {
+      form.reset({
+        name: "",
+        email: "",
+        password: "",
+      });
+    }
+  }, [operadorToEdit, form]);
 
   const regDatos = async (values: z.infer<typeof operadorSchema>) => {
     const postData = {
@@ -66,7 +93,7 @@ export function DialogoNuevoOperador({ traerDatos }: MyComponentProps) {
         showToast.success("Operador Registrado");
         traerDatos();
         form.reset();
-        // Aquí podrías cerrar el diálogo si lo deseas
+        if (onOpenChange) onOpenChange(false);
       } else {
         const errorData = await response.json();
         setError(errorData.error || "Ocurrió un error al registrar el operador");
@@ -78,23 +105,61 @@ export function DialogoNuevoOperador({ traerDatos }: MyComponentProps) {
     }
   };
 
+  const actDatos = async (values: z.infer<typeof operadorSchema>) => {
+    const postData = {
+      ...values,
+      id: operadorToEdit.id,
+      f: "act operador",
+    };
+
+    try {
+      const response = await fetch("/api/operadores", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postData),
+      });
+
+      if (response.ok) {
+        showToast.success("Operador Actualizado");
+        traerDatos();
+        form.reset();
+        if (onOpenChange) onOpenChange(false);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Ocurrió un error al actualizar el operador");
+        showToast.error(errorData.error || "Ocurrió un error");
+      }
+    } catch (error) {
+      console.error("Error submitting data:", error);
+      setError("Error de conexión al actualizar el operador.");
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof operadorSchema>) {
     setError(null);
     startTransition(() => {
-      regDatos(values);
+      if (operadorToEdit) {
+        actDatos(values);
+      } else {
+        regDatos(values);
+      }
     });
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button className="ml-auto">Nuevo Operador</Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {!onOpenChange && (
+        <DialogTrigger asChild>
+          <Button className="ml-auto">Nuevo Operador</Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Nuevo Operador</DialogTitle>
+          <DialogTitle>{operadorToEdit ? "Editar Operador" : "Nuevo Operador"}</DialogTitle>
           <DialogDescription>
-            Ingresa los datos del nuevo operador. Se le asignará el rol de 'Operador' por defecto.
+            {operadorToEdit ? "Modifica los datos del operador." : "Ingresa los datos del nuevo operador. Se le asignará el rol de 'Operador' por defecto."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -144,7 +209,7 @@ export function DialogoNuevoOperador({ traerDatos }: MyComponentProps) {
                 <Button type="button" variant="outline">Cancelar</Button>
               </DialogClose>
               <Button type="submit" disabled={isPending}>
-                {isPending ? "Registrando..." : "Registrar Operador"}
+                {isPending ? "Procesando..." : (operadorToEdit ? "Actualizar Operador" : "Registrar Operador")}
               </Button>
             </DialogFooter>
           </form>

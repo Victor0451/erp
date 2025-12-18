@@ -31,14 +31,14 @@ export function PerfilEmpresaForm() {
       razon_social: "",
       cuit_cuil: "",
       direccion: "",
-      telefono: BigInt(0),
+      telefono: 0,
       email: "",
       ubicacion: "",
     },
   });
 
 
-  
+
   useEffect(() => {
     const fetchTenantData = async () => {
       try {
@@ -69,10 +69,7 @@ export function PerfilEmpresaForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...values,
-          telefono: values.telefono.toString(),
-        }),
+        body: JSON.stringify(values),
       });
 
       if (response.ok) {
@@ -155,7 +152,13 @@ export function PerfilEmpresaForm() {
                   <FormItem>
                     <FormLabel>Teléfono</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="3794000000" {...field} value={field.value?.toString() ?? ""} />
+                      <Input
+                        type="number"
+                        placeholder="3794000000"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -94,6 +94,60 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  const session = await auth();
+  // Solo el admin del tenant puede actualizar operadores
+  if (!session?.user?.tenantID || session.user.role !== "admin") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json();
+
+    if (body.f === "act operador") {
+      const { id, name, email, estado } = body;
+
+      if (!id) {
+        return NextResponse.json({ error: "ID de operador no proporcionado" }, { status: 400 });
+      }
+
+      // Verificar que el operador pertenece al mismo tenant
+      const existingUser = await db.user.findUnique({
+        where: { id },
+      });
+
+      if (!existingUser || existingUser.tenantID !== session.user.tenantID) {
+        return NextResponse.json({ error: "Operador no encontrado" }, { status: 404 });
+      }
+
+      // Si se está cambiando el email, verificar que no esté en uso
+      if (email && email !== existingUser.email) {
+        const emailInUse = await db.user.findUnique({ where: { email } });
+        if (emailInUse) {
+          return NextResponse.json({ error: "El email ya está en uso" }, { status: 409 });
+        }
+      }
+
+      const updatedUser = await db.user.update({
+        where: { id },
+        data: {
+          ...(name && { name }),
+          ...(email && { email }),
+          ...(estado !== undefined && { estado }),
+          updatedAt: new Date(),
+        },
+      });
+
+      return NextResponse.json({ success: true, user: updatedUser });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en PUT /api/operadores:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const session = await auth();
   // Solo el admin del tenant puede eliminar operadores

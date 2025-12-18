@@ -14,6 +14,7 @@ model categorias {
   categoria   String? @db.VarChar(255)
   descripcion String? @db.VarChar(1000)
 
+  @@map("categorias")
   @@schema("cari")
 }
 
@@ -41,7 +42,9 @@ model productos {
   precio_unitario Float?
   estado          Boolean?
   idcategoria     Int?
+  moneda          String?   @db.VarChar(10)
 
+  @@map("productos")
   @@schema("cari")
 }
 
@@ -101,6 +104,7 @@ model User {
   tenantID      Int?
   estado        Boolean?
   Account       Account[]
+  Tenant        Tenant?   @relation(fields: [tenantID], references: [tenantID])
 
   @@schema("public")
 }
@@ -121,7 +125,7 @@ model proveedores {
   domicilio        String?  @db.VarChar(500)
   observacion      String?  @db.VarChar(500)
   estado           Boolean?
-  telefono         Int?
+  telefono         String?  @db.VarChar(50)
 
   @@schema("cari")
 }
@@ -141,16 +145,69 @@ model ventas {
 }
 
 model clientes {
-  idcliente Int      @id @default(autoincrement())
+  idcliente Int      @id(map: "clientes_copy1_pkey") @default(autoincrement())
   cliente   String?  @db.VarChar(255)
-  dni       Int?
+  dni       String?  @db.VarChar(20)
   calle     String?  @db.VarChar(255)
   numero    Int?
   barrio    String?  @db.VarChar(255)
-  telefono  Int?
+  telefono  String?  @db.VarChar(50)
   mail      String?  @db.VarChar(255)
   estado    Boolean?
   nombre    String?  @db.VarChar(255)
+
+  @@schema("cari")
+}
+
+model empleados {
+  idempleado    Int       @id @default(autoincrement())
+  cuil          String?   @db.VarChar(20)
+  dni           String?   @db.VarChar(20)
+  apellido      String?   @db.VarChar(255)
+  nombre        String?   @db.VarChar(255)
+  fecha_ingreso DateTime? @db.Date
+  estado        Boolean?  @default(true)
+  idcategoria   Int?
+
+  @@map("empleados")
+  @@schema("cari")
+}
+
+model facturacion {
+  idfactura   Int      @id @default(autoincrement())
+  fecha       DateTime @db.Date
+  idproveedor Int?
+  nro_factura String?  @db.VarChar(255)
+  descripcion String?  @db.VarChar(1000)
+  importe     Float?
+  moneda      String?  @db.VarChar(10)
+  anio        Int?
+
+  @@schema("cari")
+}
+
+model haberes {
+  idhaber               Int       @id @default(autoincrement())
+  idempleado            Int?
+  fecha_pago            DateTime? @db.Date
+  dias_trabajo          Int?
+  cant_unitario         Float?
+  haberes               Float?
+  antiguedad_porcentaje Float?
+  antiguedad_monto      Float?
+  asig_familiar         Float?
+  no_remunerado         Float?
+  premio                Float?
+  haberes_brutos        Float?
+  jubilacion            Float?
+  ley_19032             Float?
+  obra_social           Float?
+  renatea               Float?
+  cta_solidaria         Float?
+  total_deducciones     Float?
+  haberes_neto          Float?
+  anticipo              Float?
+  cancelacion           Float?
 
   @@schema("cari")
 }
@@ -161,13 +218,22 @@ model Tenant {
   razon_social String?  @db.VarChar(255)
   cuit_cuil    String?  @db.VarChar(255)
   direccion    String?  @db.VarChar(255)
-  telefono     Int?
+  telefono     String?  @db.VarChar(50)
   email        String?  @db.VarChar(255)
   ubicacion    String?  @db.VarChar(255)
   estado       Boolean?
   empresa      String?  @db.VarChar(255)
+  User         User[]
 
   @@schema("public")
+}
+
+model empelados_categorias {
+  idcategoria Int     @id @default(autoincrement())
+  categoria   String? @db.VarChar(255)
+  descripcion String? @db.VarChar(1000)
+
+  @@schema("cari")
 }
 
 enum Role {

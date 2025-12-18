@@ -8,7 +8,7 @@ const publicRoutes = ["/", "/prices"];
 const authRoutes = ["/login", "/register"];
 const apiAuthPrefix = "/api/auth";
 
-export default auth((req) => {
+export default auth(async (req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
 

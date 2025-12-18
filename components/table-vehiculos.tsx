@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,6 +37,7 @@ import {
 import { DialgoNuevoVehiculo } from "./dialog-nuevo-vehiculo";
 import { showToast } from "nextjs-toast-notify";
 import moment from "moment";
+import { exportToExcel } from "@/lib/export-to-excel";
 
 export function TablaVehiculos() {
   type Vehiculo = {
@@ -49,6 +50,18 @@ export function TablaVehiculos() {
   };
 
   const [data, saveData] = useState<any[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [vehiculoToEdit, setVehiculoToEdit] = useState<Vehiculo | null>(null);
+
+  const handleEdit = (vehiculo: Vehiculo) => {
+    setVehiculoToEdit(vehiculo);
+    setIsDialogOpen(true);
+  };
+
+  const handleNew = () => {
+    setVehiculoToEdit(null);
+    setIsDialogOpen(true);
+  };
 
   const traerDatos = async () => {
     const getRows = await fetch(`/api/vehiculos?f=traer%20vehiculos`);
@@ -208,6 +221,9 @@ export function TablaVehiculos() {
               >
                 Eliminar
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(vehiculo)}>
+                Editar
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -246,6 +262,29 @@ export function TablaVehiculos() {
       rowSelection,
     },
   });
+
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id,
+        formatter: (value: any) => {
+          if (col.id === 'estado') {
+            return value === true ? 'Activo' : 'De Baja';
+          }
+          return value;
+        }
+      }));
+
+    exportToExcel({
+      filename: 'vehiculos',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
 
   return (
     <div className="w-full">
@@ -288,7 +327,23 @@ export function TablaVehiculos() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DialgoNuevoVehiculo traerDatos={traerDatos} />
+        <Button variant="outline" onClick={handleExportToExcel}>
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <Button variant="outline" onClick={handleExportToExcel}>
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <Button onClick={handleNew}>Nuevo Vehiculo</Button>
+        <DialgoNuevoVehiculo
+          traerDatos={traerDatos}
+          vehiculoToEdit={vehiculoToEdit}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -301,9 +356,9 @@ export function TablaVehiculos() {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}

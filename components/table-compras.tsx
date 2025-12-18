@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -56,11 +56,12 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DialgoNuevaCompra } from "./dialog-nuevo-compra";
+import { exportToExcel } from "@/lib/export-to-excel";
 
 export function TablaCompras(
-  { onCompraAgregada, refresh }: 
-  { onCompraAgregada: () => void; refresh?: boolean }
-  ) {
+  { onCompraAgregada, refresh }:
+    { onCompraAgregada: () => void; refresh?: boolean }
+) {
   type Producto = {
     idproducto: number;
     producto: string;
@@ -302,6 +303,32 @@ export function TablaCompras(
     },
   });
 
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id,
+        formatter: (value: any) => {
+          if (col.id === 'alta') {
+            return moment(value).format('DD/MM/YYYY');
+          }
+          if (col.id === 'estado') {
+            return value === true ? 'Activo' : 'De Baja';
+          }
+          return value;
+        }
+      }));
+
+    exportToExcel({
+      filename: 'compras',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
+
   return (
     <div className="w-full">
       <div className=" border-2 rounded-xl p-4">
@@ -399,6 +426,13 @@ export function TablaCompras(
           </DropdownMenuContent>
         </DropdownMenu>
 
+
+
+        <Button variant="outline" onClick={handleExportToExcel} className="mr-2">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
         <Button onClick={traerDatos}>Todos los Productos</Button>
       </div>
       <div className="overflow-hidden rounded-md border">
@@ -412,9 +446,9 @@ export function TablaCompras(
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}
@@ -475,6 +509,6 @@ export function TablaCompras(
           </Button>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

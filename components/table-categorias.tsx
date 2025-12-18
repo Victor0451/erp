@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,6 +38,7 @@ import {
 import { DialgoNuevaCategoria } from "./dialog-nueva-categoria";
 import { showToast } from "nextjs-toast-notify";
 import Router from "next/router";
+import { exportToExcel } from "@/lib/export-to-excel";
 
 export type Categorias = {
   idcategoria: number;
@@ -47,6 +48,18 @@ export type Categorias = {
 
 export function TablaCategorias() {
   const [data, saveData] = useState([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [categoriaToEdit, setCategoriaToEdit] = useState<Categorias | null>(null);
+
+  const handleEdit = (categoria: Categorias) => {
+    setCategoriaToEdit(categoria);
+    setIsDialogOpen(true);
+  };
+
+  const handleNew = () => {
+    setCategoriaToEdit(null);
+    setIsDialogOpen(true);
+  };
 
   const traerDatos = async () => {
     const getRows = await fetch(`/api/categorias?f=traer%20categorias`);
@@ -178,6 +191,9 @@ export function TablaCategorias() {
               >
                 Eliminar
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(categoria)}>
+                Editar
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -216,6 +232,23 @@ export function TablaCategorias() {
       rowSelection,
     },
   });
+
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id
+      }));
+
+    exportToExcel({
+      filename: 'categorias',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
 
   return (
     <div className="w-full">
@@ -257,7 +290,18 @@ export function TablaCategorias() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DialgoNuevaCategoria traerDatos={traerDatos} />
+        <Button variant="outline" onClick={handleExportToExcel}>
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <Button onClick={handleNew}>Nueva Categoria</Button>
+        <DialgoNuevaCategoria
+          traerDatos={traerDatos}
+          categoriaToEdit={categoriaToEdit}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -270,9 +314,9 @@ export function TablaCategorias() {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}

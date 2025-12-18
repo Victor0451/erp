@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,6 +37,8 @@ import {
 
 import { showToast } from "nextjs-toast-notify";
 import moment from "moment";
+import { exportToExcel } from "@/lib/export-to-excel";
+import { DialogEditarVenta } from "./dialog-editar-venta";
 
 export function TablaVentasRealizadas({
   onVentaEliminada,
@@ -57,6 +59,13 @@ export function TablaVentasRealizadas({
   };
 
   const [data, saveData] = useState<any[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [ventaToEdit, setVentaToEdit] = useState<Venta | null>(null);
+
+  const handleEdit = (venta: Venta) => {
+    setVentaToEdit(venta);
+    setIsDialogOpen(true);
+  };
 
   const traerDatos = async () => {
     const getRows = await fetch(`/api/ventas?f=traer%20ventas`);
@@ -271,6 +280,9 @@ export function TablaVentasRealizadas({
               <DropdownMenuItem onClick={() => eliminarDatos(venta)}>
                 Eliminar
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(venta)}>
+                Editar
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -309,6 +321,29 @@ export function TablaVentasRealizadas({
       rowSelection,
     },
   });
+
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id,
+        formatter: (value: any) => {
+          if (col.id === 'fecha') {
+            return moment(value).format('DD/MM/YYYY');
+          }
+          return value;
+        }
+      }));
+
+    exportToExcel({
+      filename: 'ventas_realizadas',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
 
   return (
     <div className="w-full">
@@ -350,6 +385,18 @@ export function TablaVentasRealizadas({
               })}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Button variant="outline" onClick={handleExportToExcel} className="ml-auto">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <DialogEditarVenta
+          traerDatos={traerDatos}
+          ventaToEdit={ventaToEdit}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -362,9 +409,9 @@ export function TablaVentasRealizadas({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}
@@ -425,6 +472,6 @@ export function TablaVentasRealizadas({
           </Button>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

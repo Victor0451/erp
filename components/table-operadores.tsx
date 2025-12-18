@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { showToast } from "nextjs-toast-notify";
 import { DialogoNuevoOperador } from "./dialog-nuevo-operador";
+import { exportToExcel } from "@/lib/export-to-excel";
 
 export type Operador = {
   id: string;
@@ -46,6 +47,18 @@ export type Operador = {
 
 export function TablaOperadores() {
   const [data, saveData] = useState<Operador[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [operadorToEdit, setOperadorToEdit] = useState<Operador | null>(null);
+
+  const handleEdit = (operador: Operador) => {
+    setOperadorToEdit(operador);
+    setIsDialogOpen(true);
+  };
+
+  const handleNew = () => {
+    setOperadorToEdit(null);
+    setIsDialogOpen(true);
+  };
 
   const traerDatos = async () => {
     const getRows = await fetch(`/api/operadores?f=traer%20operadores`);
@@ -144,6 +157,9 @@ export function TablaOperadores() {
               >
                 Eliminar
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(operador)}>
+                Editar
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -175,6 +191,29 @@ export function TablaOperadores() {
     },
   });
 
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id,
+        formatter: (value: any) => {
+          if (col.id === 'estado') {
+            return value === true ? 'Activo' : 'De Baja';
+          }
+          return value;
+        }
+      }));
+
+    exportToExcel({
+      filename: 'operadores',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center py-4">
@@ -186,7 +225,18 @@ export function TablaOperadores() {
           }
           className="max-w-sm"
         />
-        <DialogoNuevoOperador traerDatos={traerDatos} />
+        <Button variant="outline" onClick={handleExportToExcel} className="mr-2">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <Button onClick={handleNew}>Nuevo Operador</Button>
+        <DialogoNuevoOperador
+          traerDatos={traerDatos}
+          operadorToEdit={operadorToEdit}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -198,9 +248,9 @@ export function TablaOperadores() {
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>

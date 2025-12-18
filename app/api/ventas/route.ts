@@ -103,13 +103,39 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
+  const schema = session.user.tenantName;
   const body = await req.json();
 
-  if (body.f === "flag") {
-    // Lógica para PUT aquí
-  }
+  try {
+    if (body.f === "act venta") {
+      const fecha = new Date(body.fecha);
+      const idproducto = parseInt(body.idproducto, 10);
+      const cantidad = parseInt(body.cantidad, 10);
+      const importe = parseFloat(body.importe);
+      const idcliente = parseInt(body.idcliente, 10);
+      const idventa = parseInt(body.idventa, 10);
 
-  return NextResponse.json({ message: "Método no implementado" }, { status: 404 });
+      const result = await db.$executeRaw(Prisma.sql`
+          UPDATE ${Prisma.raw(schema)}.ventas
+          SET fecha = ${fecha}, 
+              idproducto = ${idproducto}, 
+              cantidad = ${cantidad}, 
+              importe = ${importe}, 
+              idcliente = ${idcliente}, 
+              moneda = ${body.moneda}, 
+              nro_factura = ${body.nro_factura}, 
+              observacion = ${body.observacion}
+          WHERE idventa = ${idventa}
+        `);
+
+      return NextResponse.json({ success: true, affectedRows: result });
+    }
+
+    return NextResponse.json({ error: "Parámetro 'f' no válido" }, { status: 400 });
+  } catch (error) {
+    console.error("Error en PUT /api/ventas:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: NextRequest) {

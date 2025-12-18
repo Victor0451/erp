@@ -15,6 +15,7 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
@@ -28,6 +29,9 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.env.development
+.env.production
+.env.test
 
 # vercel
 .vercel
@@ -35,3 +39,79 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# logs
+logs/
+*.log
+
+# runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# optional npm cache directory
+.npm
+
+# optional REPL history
+.node_repl_history
+
+# output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env.local
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Temporary files
+tmp/
+temp/
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Backup files
+*.backup
+*.bak

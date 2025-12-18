@@ -13,7 +13,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown, MoreHorizontal } from "lucide-react";
+import { ArrowUpDown, ChevronDown, MoreHorizontal, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,6 +37,7 @@ import {
 import { DialgoNuevoProveedor } from "./dialog-nuevo-proveedores";
 import { showToast } from "nextjs-toast-notify";
 import moment from "moment";
+import { exportToExcel } from "@/lib/export-to-excel";
 
 export function TablaProveedores() {
   type Vehiculo = {
@@ -51,6 +52,18 @@ export function TablaProveedores() {
   };
 
   const [data, saveData] = useState<any[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [proveedorToEdit, setProveedorToEdit] = useState<any | null>(null);
+
+  const handleEdit = (proveedor: any) => {
+    setProveedorToEdit(proveedor);
+    setIsDialogOpen(true);
+  };
+
+  const handleNew = () => {
+    setProveedorToEdit(null);
+    setIsDialogOpen(true);
+  };
 
   const traerDatos = async () => {
     const getRows = await fetch(`/api/proveedores?f=traer%20proveedores`);
@@ -224,6 +237,9 @@ export function TablaProveedores() {
               >
                 Eliminar
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleEdit(proveedor)}>
+                Editar
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
             </DropdownMenuContent>
           </DropdownMenu>
@@ -262,6 +278,29 @@ export function TablaProveedores() {
       rowSelection,
     },
   });
+
+  const handleExportToExcel = () => {
+    const visibleColumns = table.getAllColumns()
+      .filter(col => col.getIsVisible() && col.id !== 'select' && col.id !== 'actions')
+      .map(col => ({
+        header: typeof col.columnDef.header === 'string'
+          ? col.columnDef.header
+          : col.id,
+        accessor: col.id,
+        formatter: (value: any) => {
+          if (col.id === 'estado') {
+            return value === true ? 'Activo' : 'De Baja';
+          }
+          return value;
+        }
+      }));
+
+    exportToExcel({
+      filename: 'proveedores',
+      columns: visibleColumns,
+      data: table.getFilteredRowModel().rows.map(row => row.original)
+    });
+  };
 
   return (
     <div className="w-full">
@@ -304,7 +343,18 @@ export function TablaProveedores() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DialgoNuevoProveedor traerDatos={traerDatos} />
+        <Button variant="outline" onClick={handleExportToExcel} className="mr-2">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar a Excel
+        </Button>
+
+        <Button onClick={handleNew}>Nuevo Proveedor</Button>
+        <DialgoNuevoProveedor
+          traerDatos={traerDatos}
+          proveedorToEdit={proveedorToEdit}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table>
@@ -317,9 +367,9 @@ export function TablaProveedores() {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}
@@ -380,6 +430,6 @@ export function TablaProveedores() {
           </Button>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

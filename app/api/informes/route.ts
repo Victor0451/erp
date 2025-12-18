@@ -178,6 +178,37 @@ export async function GET(req: NextRequest) {
         { status: 500 }
       );
     }
+  } else if (f === "resumen facturacion") {
+    try {
+      const resumenFacturacion: any[] = await db.$queryRaw(
+        Prisma.sql`
+          SELECT 
+            anio,
+            moneda,
+            COUNT(*) as cantidad_facturas,
+            SUM(importe) as total_importe
+          FROM ${Prisma.raw(schema)}.facturacion
+          GROUP BY anio, moneda
+          ORDER BY anio DESC, moneda ASC
+        `
+      );
+
+      // Convertir BigInt y Decimal a Number para que sea serializable a JSON
+      const serializableData = resumenFacturacion.map((item) => ({
+        anio: Number(item.anio),
+        moneda: item.moneda,
+        cantidad_facturas: Number(item.cantidad_facturas),
+        total_importe: Number(item.total_importe),
+      }));
+
+      return NextResponse.json(serializableData);
+    } catch (error) {
+      console.error("Error al obtener resumen de facturación:", error);
+      return NextResponse.json(
+        { error: "Error interno del servidor" },
+        { status: 500 }
+      );
+    }
   }
 
   return NextResponse.json(
